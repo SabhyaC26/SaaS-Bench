@@ -42,10 +42,6 @@ ENV/
 htmlcov/
 .tox/
 
-# Workflows (generated files)
-workflows/databricks/*.yaml
-!workflows/databricks/.gitkeep
-
 # OS
 .DS_Store
 Thumbs.db

@@ -1,0 +1,81 @@
+id: databricks-004
+source_url: https://docs.databricks.com/aws/en/schemas/create-schema
+title: Create Schema in Databricks Unity Catalog
+tier: 2
+platforms:
+- Databricks
+- AWS
+description: Workflow to create a schema in Databricks Unity Catalog, including setting
+  up necessary permissions and configurations.
+prerequisites:
+- Unity Catalog metastore must be linked to the workspace.
+- User must have USE CATALOG and CREATE SCHEMA permissions on the parent catalog.
+- For managed storage location, an external location must be defined in Unity Catalog.
+- User must have CREATE MANAGED STORAGE privilege on the external location if specifying
+  managed storage.
+- Cluster must use a Unity Catalog-compliant access mode or SQL warehouse must support
+  Unity Catalog.
+initial_state:
+  workspace: Not configured with schema
+  catalog: Exists but schema not created
+  cluster: Unity Catalog-compliant access mode enabled
+goal_state:
+  workspace: Configured with new schema in Unity Catalog
+  schema: Created under specified catalog
+  cluster: Attached and functional for schema operations
+steps:
+- step_id: 1
+  description: Create a new notebook for schema creation in Databricks workspace
+  method: ui
+  sql_command: null
+  api_call:
+    tool: create_notebook
+    parameters:
+      notebook_name: SchemaCreationNotebook
+      workspace_path: /Workspace/Users/user/schema-creation
+  expected_state_change:
+    notebook: Created in workspace
+  verification:
+    method: ui_check
+    criteria: Notebook appears in workspace directory
+- step_id: 2
+  description: Attach notebook to a Unity Catalog-compliant cluster
+  method: ui
+  sql_command: null
+  api_call:
+    tool: attach_to_cluster
+    parameters:
+      notebook_id: SchemaCreationNotebook
+      cluster_id: unity-catalog-cluster
+  expected_state_change:
+    cluster: Attached to notebook
+  verification:
+    method: ui_check
+    criteria: Cluster status shows as attached in notebook UI
+- step_id: 3
+  description: Set the active catalog for schema creation
+  method: sql
+  sql_command: USE CATALOG my_catalog
+  api_call:
+    tool: use_catalog
+    parameters:
+      catalog_name: my_catalog
+  expected_state_change:
+    active_catalog: Set to my_catalog
+  verification:
+    method: sql_query
+    criteria: SELECT CURRENT_CATALOG() returns 'my_catalog'
+- step_id: 4
+  description: Create a new schema in the active catalog
+  method: sql
+  sql_command: CREATE SCHEMA IF NOT EXISTS my_schema
+  api_call:
+    tool: create_schema
+    parameters:
+      schema_name: my_schema
+      catalog_name: my_catalog
+  expected_state_change:
+    schema: Created as my_catalog.my_schema
+  verification:
+    method: sql_query
+    criteria: SHOW SCHEMAS IN my_catalog includes 'my_schema'

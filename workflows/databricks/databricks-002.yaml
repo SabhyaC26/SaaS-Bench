@@ -1,0 +1,86 @@
+id: databricks-002
+source_url: https://docs.databricks.com/aws/en/getting-started/quick-start
+title: Databricks Quick Start Workflow
+tier: 1
+platforms:
+- Databricks
+- AWS
+description: A beginner-friendly workflow to create a notebook, query a sample table,
+  and visualize data in Databricks using Unity Catalog.
+prerequisites:
+- Workspace must have Unity Catalog enabled
+- Permission to use an existing compute resource or create a new compute resource
+initial_state:
+  workspace: Unity Catalog enabled workspace exists
+  compute_resource: Permission to access or create compute resources
+  notebook: No notebook created
+  data_query: No query executed
+  visualization: No visualization created
+goal_state:
+  workspace: Unity Catalog enabled workspace active
+  compute_resource: Compute resource accessible
+  notebook: New notebook created and attached to cluster
+  data_query: Sample table queried successfully
+  visualization: Bar chart visualization created for fare amount by trip distance
+steps:
+- step_id: 1
+  description: Create a new notebook in the Databricks workspace
+  method: ui
+  sql_command: null
+  api_call:
+    tool: create_notebook
+    parameters:
+      name: QuickStartNotebook
+      path: /Workspace/Users/<user>/QuickStartNotebook
+  expected_state_change:
+    notebook: New notebook created in workspace
+  verification:
+    check: Notebook appears in workspace sidebar
+    method: UI confirmation
+- step_id: 2
+  description: Attach the notebook to a compute cluster
+  method: ui
+  sql_command: null
+  api_call:
+    tool: attach_to_cluster
+    parameters:
+      notebook_id: <notebook_id>
+      cluster_id: <existing_cluster_id>
+  expected_state_change:
+    compute_resource: Notebook attached to cluster
+  verification:
+    check: Cluster status shows as attached in notebook UI
+    method: UI confirmation
+- step_id: 3
+  description: Query the samples.nyctaxi.trips table
+  method: sql
+  sql_command: SELECT * FROM samples.nyctaxi.trips
+  api_call:
+    tool: query_table
+    parameters:
+      table: samples.nyctaxi.trips
+      query: SELECT * FROM samples.nyctaxi.trips
+  expected_state_change:
+    data_query: Query results displayed in notebook
+  verification:
+    check: Query results appear in notebook cell output
+    method: UI confirmation
+- step_id: 4
+  description: Create a visualization of fare amount by trip distance grouped by pickup
+    zip
+  method: ui
+  sql_command: null
+  api_call:
+    tool: create_visualization
+    parameters:
+      type: Bar
+      x_column: fare_amount
+      y_column: trip_distance
+      aggregation: Average
+      group_by: pickup_zip
+      notebook_id: <notebook_id>
+  expected_state_change:
+    visualization: Bar chart created and saved in notebook
+  verification:
+    check: Visualization appears in notebook under visualization tab
+    method: UI confirmation

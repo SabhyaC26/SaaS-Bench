@@ -1,0 +1,112 @@
+id: databricks-003
+source_url: https://docs.databricks.com/aws/en/catalogs/create-catalog
+title: Create Catalog in Databricks
+tier: 3
+platforms:
+- Databricks
+- AWS
+description: Workflow to create a catalog in Databricks Unity Catalog, supporting
+  standard, shared, and foreign catalog types based on user privileges and compute
+  requirements.
+prerequisites:
+- User must be a Databricks metastore admin or have CREATE CATALOG privilege on the
+  metastore.
+- Compute resource must be on Databricks Runtime 11.3 or above with Unity Catalog-compliant
+  access mode.
+- SQL warehouses must support Unity Catalog.
+- 'For shared catalog: Delta Sharing share must exist in the workspace.'
+- 'For shared catalog: User must be a metastore admin, have USE PROVIDER privilege,
+  or own the provider object.'
+- 'For standard catalog with managed storage: User must have CREATE MANAGED STORAGE
+  privilege on the target external location.'
+- 'For standard catalog: If no metastore-level managed storage exists, a managed storage
+  location must be specified.'
+- 'For foreign catalog: User must be the owner of the connection or have CREATE FOREIGN
+  CATALOG privilege on the connection.'
+- 'For foreign catalog: Compute must be on Databricks Runtime 13.1 or above, and SQL
+  warehouses must be Pro or Serverless.'
+initial_state:
+  workspace: Databricks workspace initialized
+  user_privileges: User has necessary privileges or admin access
+  compute: No compute resource attached or configured for catalog creation
+  catalog: No catalog created
+goal_state:
+  workspace: Databricks workspace with a new catalog
+  user_privileges: User privileges unchanged
+  compute: Compute resource configured and attached for catalog creation
+  catalog: New catalog (standard, shared, or foreign) created in Unity Catalog
+steps:
+- step_id: 1
+  description: Create a new notebook in Databricks workspace for catalog creation
+  method: ui
+  sql_command: null
+  api_call:
+    tool: create_notebook
+    parameters:
+      notebook_name: create-catalog-notebook
+      language: SQL
+  expected_state_change:
+    notebook: New notebook created in workspace
+  verification:
+    method: ui
+    check: Notebook appears in workspace UI under user folder
+- step_id: 2
+  description: Attach the notebook to a compute cluster with appropriate runtime version
+  method: ui
+  sql_command: null
+  api_call:
+    tool: attach_to_cluster
+    parameters:
+      notebook_id: create-catalog-notebook
+      cluster_id: unity-catalog-cluster
+      runtime_version: 11.3 or above (13.1 for foreign catalog)
+  expected_state_change:
+    compute: Notebook attached to cluster with Unity Catalog-compliant access mode
+  verification:
+    method: ui
+    check: Cluster status shows as attached to notebook in UI
+- step_id: 3
+  description: Set the catalog context in the notebook for Unity Catalog operations
+  method: sql
+  sql_command: USE CATALOG hive_metastore
+  api_call:
+    tool: use_catalog
+    parameters:
+      catalog_name: hive_metastore
+  expected_state_change:
+    context: Current catalog context set to hive_metastore
+  verification:
+    method: sql
+    check: Run 'SHOW CURRENT CATALOG' to confirm hive_metastore is active
+- step_id: 4
+  description: Create a new catalog in Unity Catalog with specified type and properties
+  method: sql
+  sql_command: CREATE CATALOG IF NOT EXISTS my_catalog
+  api_call:
+    tool: create_catalog
+    parameters:
+      catalog_name: my_catalog
+      type: standard|shared|foreign
+      properties:
+        managed_location: optional_s3_path
+        connection: optional_connection_name_for_foreign
+  expected_state_change:
+    catalog: New catalog 'my_catalog' created in Unity Catalog
+  verification:
+    method: sql
+    check: Run 'SHOW CATALOGS' to confirm 'my_catalog' is listed
+- step_id: 5
+  description: Grant necessary privileges on the new catalog to users or groups
+  method: sql
+  sql_command: GRANT USE CATALOG ON my_catalog TO `user_or_group`
+  api_call:
+    tool: grant_privilege
+    parameters:
+      privilege: USE CATALOG
+      catalog_name: my_catalog
+      principal: user_or_group
+  expected_state_change:
+    permissions: Specified user or group granted USE CATALOG privilege on 'my_catalog'
+  verification:
+    method: sql
+    check: Run 'SHOW GRANTS ON CATALOG my_catalog' to confirm privileges
