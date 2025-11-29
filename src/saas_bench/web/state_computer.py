@@ -1,7 +1,7 @@
 """State computation logic for workflow visualization."""
 
 from copy import deepcopy
-from typing import Dict, Optional
+from typing import Dict
 
 from ..tutorial_processor.workflow_extractor import Workflow
 

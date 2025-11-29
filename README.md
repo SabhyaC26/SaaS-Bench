@@ -25,7 +25,7 @@ Phase 1 focuses on Databricks platform support, including:
 uv sync
 ```
 
-2. Set up environment variables:
+1. Set up environment variables:
 
 ```bash
 cp .env.example .env
@@ -35,8 +35,6 @@ cp .env.example .env
 ## Usage
 
 ### Processing Tutorials
-
-**Process Tutorials (with optional analysis)**
 
 Process one or more tutorials and optionally analyze resource types:
 
@@ -89,9 +87,89 @@ python scripts/validate_workflows.py --skip-state-validation
 ```
 
 **What gets validated:**
+
 - ✓ Workflow structure (id, title, steps, etc.)
 - ✓ `initial_state` and `goal_state` conform to `DatabricksState` schema
 - ✓ All resource types and properties match the schema
+
+### Analyzing State Schema
+
+Analyze existing workflows to identify missing resource types and properties in the state schema:
+
+```bash
+python scripts/update_state_from_workflows.py
+```
+
+This script will:
+
+- Analyze all workflows in `workflows/databricks/`
+- Compare found resources with the current `DatabricksState` schema
+- Generate recommendations for missing resource types and properties
+- Output JSON analysis and markdown recommendations
+
+Options:
+
+```bash
+# Specify custom workflows directory
+python scripts/update_state_from_workflows.py --workflows-dir workflows/databricks
+
+# Custom output files
+python scripts/update_state_from_workflows.py \
+  --json-output my_analysis.json \
+  --markdown-output my_recommendations.md
+```
+
+### Web Visualization Interface
+
+SaaS-Bench includes a web-based visualization interface for exploring workflows and state transitions.
+
+**Backend Setup:**
+
+Start the FastAPI server:
+
+```bash
+python -m uvicorn saas_bench.web.api:app --reload
+```
+
+The API will be available at `http://localhost:8000`.
+
+**Frontend Setup:**
+
+Navigate to the web directory:
+
+```bash
+cd web
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The frontend will run on `http://localhost:5173` (Vite default port).
+
+**Features:**
+
+- **Workflow Selection**: Browse and select from available workflows
+- **Interactive Step Navigation**: Click on workflow steps to see state transitions
+- **State Visualization**: Hierarchical view of Databricks state (catalogs, schemas, tables, notebooks, clusters)
+- **State Transitions**: Side-by-side comparison showing what changed between steps
+- **Initial/Goal State**: View initial and goal states independently
+
+**API Endpoints:**
+
+- `GET /api/workflows` - List all available workflows
+- `GET /api/workflows/{workflow_id}` - Get full workflow details
+- `GET /api/workflows/{workflow_id}/state/{step_index}` - Get state at a specific step (0 = initial, -1 = goal, 1-N = after step N)
+- `GET /api/workflows/{workflow_id}/state/before/{step_id}` - Get state before a specific step
+- `GET /api/workflows/{workflow_id}/state/after/{step_id}` - Get state after a specific step
 
 ### Running Tests
 
@@ -112,16 +190,18 @@ pytest tests/test_evaluation.py
 
 ## Project Structure
 
-```
+```text
 SaaS-Bench/
 ├── src/saas_bench/
 │   ├── tutorial_processor/    # Tutorial scraping and workflow extraction
 │   ├── domains/databricks/    # Databricks domain implementation
 │   ├── core/                  # Environment and evaluation
+│   ├── web/                   # Web visualization API and state computation
 │   └── utils/                 # Utility functions
 ├── workflows/databricks/      # Generated workflow YAML files
+├── web/                       # React frontend for workflow visualization
 ├── tests/                     # Test suite
-└── scripts/                    # CLI scripts
+└── scripts/                   # CLI scripts
 ```
 
 ## Development
@@ -132,6 +212,8 @@ SaaS-Bench/
 - **API Tools**: Pure functions implementing Databricks operations
 - **Environment**: Orchestrates state transitions and tool execution
 - **Evaluation**: Compares final state to goal state for task success determination
+- **Web Visualization**: React frontend with FastAPI backend for interactive workflow exploration
+- **State Computation**: Logic for computing state at any workflow step from initial state and step changes
 
 ### Design Principles
 
@@ -143,7 +225,7 @@ SaaS-Bench/
 
 ### Schema Design
 
-**Recommended Approach: Batch Analysis**
+#### Recommended Approach: Batch Analysis
 
 Process all tutorials upfront, then build one comprehensive schema:
 
@@ -164,14 +246,20 @@ Process all tutorials upfront, then build one comprehensive schema:
 
 See [docs/BATCH_SCHEMA_DESIGN.md](docs/BATCH_SCHEMA_DESIGN.md) for the complete process.
 
-**Incremental Extension (Alternative)**
+#### Incremental Extension (Alternative)
 
-If you need to extend the schema after initial design, use the `--analyze` flag to identify gaps:
+If you need to extend the schema after initial design, you have two options:
+
+- Use the analyze flag when processing new tutorials:
 
 ```bash
 python scripts/analyze_tutorials_batch.py <tutorial-urls> --analyze
 ```
 
-## License
+- Analyze existing workflows to find schema gaps:
 
-[Add license information]
+```bash
+python scripts/update_state_from_workflows.py
+```
+
+This will compare all existing workflows against the current schema and generate recommendations for missing properties and resource types.
