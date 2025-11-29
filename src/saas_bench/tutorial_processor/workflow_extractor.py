@@ -1,5 +1,7 @@
 """Extract workflows from tutorial text using LLM with structured outputs."""
 
+import re
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -13,10 +15,18 @@ class WorkflowStep(BaseModel):
     step_id: int
     description: str
     method: str = Field(description="Method used: 'sql', 'ui', or 'api'")
-    sql_command: Optional[str] = Field(None, description="Original SQL command if applicable")
-    api_call: Dict = Field(description="API call specification with tool name and parameters")
-    expected_state_change: Dict = Field(default_factory=dict, description="Expected state changes")
-    verification: Dict = Field(default_factory=dict, description="How to verify this step succeeded")
+    sql_command: Optional[str] = Field(
+        None, description="Original SQL command if applicable"
+    )
+    api_call: Dict = Field(
+        description="API call specification with tool name and parameters"
+    )
+    expected_state_change: Dict = Field(
+        default_factory=dict, description="Expected state changes"
+    )
+    verification: Dict = Field(
+        default_factory=dict, description="How to verify this step succeeded"
+    )
 
 
 class Workflow(BaseModel):
@@ -28,15 +38,37 @@ class Workflow(BaseModel):
     tier: int = Field(description="Difficulty tier (1-5)")
     platforms: List[str] = Field(description="List of platforms involved")
     description: str = Field(description="Workflow description")
-    prerequisites: List[str] = Field(default_factory=list, description="Prerequisites from tutorial")
+    prerequisites: List[str] = Field(
+        default_factory=list, description="Prerequisites from tutorial"
+    )
     initial_state: Dict = Field(default_factory=dict, description="Starting state")
     goal_state: Dict = Field(description="Final desired state")
     steps: List[WorkflowStep] = Field(description="Step-by-step instructions")
-    milestones: List[Dict] = Field(default_factory=list, description="Intermediate checkpoints")
-    minefields: List[Dict] = Field(default_factory=list, description="Critical violations to avoid")
 
 
-def extract_workflow(tutorial_text: str, source_url: str) -> Workflow:
+def generate_next_workflow_id(output_dir: str = "workflows/databricks") -> str:
+    """Generate the next sequential workflow ID in format databricks-XXX."""
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Pattern to match databricks-XXX.yaml files
+    pattern = re.compile(r"^databricks-(\d+)\.yaml$")
+
+    max_num = 0
+    for file_path in output_path.glob("databricks-*.yaml"):
+        match = pattern.match(file_path.name)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+
+    # Return next ID with zero-padded 3 digits
+    next_num = max_num + 1
+    return f"databricks-{next_num:03d}"
+
+
+def extract_workflow(
+    tutorial_text: str, source_url: str, output_dir: str = "workflows/databricks"
+) -> Workflow:
     """Extract workflow from tutorial text using LLM with structured outputs."""
     client = GrokClient()
 
@@ -59,8 +91,7 @@ Key requirements:
    - "Create visualization" → create_visualization tool
 5. Assign appropriate tier (1-5) based on complexity
 6. Specify expected state changes for each step
-7. Identify milestones (intermediate goals)
-8. Identify minefields (critical violations)
+7. Define initial state (starting conditions) and goal state (desired end result)
 
 Generate a complete workflow specification following the Workflow schema."""
 
@@ -74,10 +105,10 @@ Tutorial Content:
 Extract the workflow with:
 - All prerequisites
 - Step-by-step instructions with API tool mappings
-- Expected state changes
-- Goal state specification
-- Appropriate tier assignment
-- Milestones and minefields if applicable"""
+- Expected state changes for each step
+- Initial state (starting conditions)
+- Goal state (desired end result)
+- Appropriate tier assignment (1-5)"""
 
     workflow = client.structured_output(user_prompt, system_prompt, Workflow)
 
@@ -85,13 +116,8 @@ Extract the workflow with:
     if not workflow.source_url:
         workflow = workflow.model_copy(update={"source_url": source_url})
 
-    # Ensure id is set (generate from URL if not provided)
-    if not workflow.id:
-        # Generate ID from URL
-        import re
-        workflow_id = re.sub(r"[^a-z0-9-]", "-", source_url.lower())
-        workflow_id = re.sub(r"-+", "-", workflow_id).strip("-")
-        workflow = workflow.model_copy(update={"id": workflow_id})
+    # Always generate sequential ID (ignore LLM-generated ID)
+    workflow_id = generate_next_workflow_id(output_dir)
+    workflow = workflow.model_copy(update={"id": workflow_id})
 
     return workflow
-

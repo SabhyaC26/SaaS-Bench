@@ -22,6 +22,7 @@ class Catalog(BaseModel):
 
     name: str
     owner: str
+    type: Optional[str] = None  # "standard", "shared", or "foreign"
     comment: Optional[str] = None
     properties: Dict[str, str] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)

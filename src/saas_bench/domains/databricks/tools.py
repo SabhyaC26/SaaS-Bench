@@ -44,6 +44,7 @@ def create_catalog(state: DatabricksState, args: Dict) -> Tuple[DatabricksState,
     """Create a new catalog."""
     catalog_name = args.get("catalog_name")
     owner = args.get("owner", "admin")
+    catalog_type = args.get("type")  # "standard", "shared", or "foreign"
     comment = args.get("comment")
 
     if not catalog_name:
@@ -52,7 +53,9 @@ def create_catalog(state: DatabricksState, args: Dict) -> Tuple[DatabricksState,
     if catalog_name in state.catalogs:
         return state, {"error": f"Catalog '{catalog_name}' already exists"}
 
-    new_catalog = Catalog(name=catalog_name, owner=owner, comment=comment)
+    new_catalog = Catalog(
+        name=catalog_name, owner=owner, type=catalog_type, comment=comment
+    )
     new_catalogs = {**state.catalogs, catalog_name: new_catalog}
     new_state = state.model_copy(update={"catalogs": new_catalogs})
 
