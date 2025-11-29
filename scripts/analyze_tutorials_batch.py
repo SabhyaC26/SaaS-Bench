@@ -13,6 +13,7 @@ import yaml
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from saas_bench.domains.databricks.registry import TOOL_REGISTRY
 from saas_bench.tutorial_processor.scraper import scrape_tutorial
 from saas_bench.tutorial_processor.workflow_extractor import extract_workflow
 from saas_bench.tutorial_processor.workflow_serializer import (
@@ -178,29 +179,8 @@ def generate_schema_recommendations(analysis: Dict) -> str:
     else:
         recommendations.append("✓ All resource types are already in the schema\n")
 
-    # Check for missing tools
-    current_tools = {
-        "use_catalog",
-        "list_catalogs",
-        "create_catalog",
-        "list_schemas",
-        "create_schema",
-        "list_tables",
-        "create_table",
-        "insert_into_table",
-        "query_table",
-        "grant_privilege",
-        "revoke_privilege",
-        "create_notebook",
-        "list_notebooks",
-        "run_notebook_cell",
-        "create_visualization",
-        "list_clusters",
-        "create_cluster",
-        "attach_to_cluster",
-        "list_jobs",
-        "create_job",
-    }
+    # Check for missing tools - dynamically get from registry
+    current_tools = set(TOOL_REGISTRY.keys())
 
     tools_used = set(analysis["tools_used"])
     missing_tools = tools_used - current_tools
