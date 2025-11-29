@@ -6,7 +6,7 @@ SaaS-Bench is a benchmark for evaluating AI agents on cross-platform enterprise 
 
 ## Core Architecture
 
-### 1. State-Machine Model (τ-bench methodology)
+### 1. State-Machine Model
 
 The system uses a state-machine approach where:
 
