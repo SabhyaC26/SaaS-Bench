@@ -1,7 +1,6 @@
 id: databricks-003
 source_url: https://docs.databricks.com/aws/en/catalogs/create-catalog
 title: Create Catalog in Databricks
-tier: 3
 platforms:
 - Databricks
 - AWS

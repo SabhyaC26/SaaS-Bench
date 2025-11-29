@@ -35,7 +35,6 @@ class Workflow(BaseModel):
     id: str = Field(description="Unique workflow identifier")
     source_url: str = Field(description="Source tutorial URL")
     title: str = Field(description="Tutorial title")
-    tier: int = Field(description="Difficulty tier (1-5)")
     platforms: List[str] = Field(description="List of platforms involved")
     description: str = Field(description="Workflow description")
     prerequisites: List[str] = Field(
@@ -89,9 +88,8 @@ Key requirements:
    - "Create notebook" → create_notebook tool
    - "Attach to cluster" → attach_to_cluster tool
    - "Create visualization" → create_visualization tool
-5. Assign appropriate tier (1-5) based on complexity
-6. Specify expected state changes for each step
-7. Define initial state (starting conditions) and goal state (desired end result)
+5. Specify expected state changes for each step
+6. Define initial state (starting conditions) and goal state (desired end result)
 
 Generate a complete workflow specification following the Workflow schema."""
 
@@ -107,8 +105,7 @@ Extract the workflow with:
 - Step-by-step instructions with API tool mappings
 - Expected state changes for each step
 - Initial state (starting conditions)
-- Goal state (desired end result)
-- Appropriate tier assignment (1-5)"""
+- Goal state (desired end result)"""
 
     workflow = client.structured_output(user_prompt, system_prompt, Workflow)
 

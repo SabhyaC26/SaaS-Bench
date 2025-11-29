@@ -116,7 +116,6 @@ def process_tutorials_batch(
                     "url": url,
                     "workflow_id": workflow.id,
                     "title": workflow.title,
-                    "tier": workflow.tier,
                     "output_path": output_path,
                     "resources_found": list(resources.keys()),
                 }

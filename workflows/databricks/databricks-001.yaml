@@ -1,7 +1,6 @@
 id: databricks-001
 source_url: https://docs.databricks.com/aws/en/getting-started/create-table
 title: Databricks Create Table Workflow
-tier: 2
 platforms:
 - Databricks
 - Unity Catalog

@@ -1,7 +1,6 @@
 id: databricks-004
 source_url: https://docs.databricks.com/aws/en/schemas/create-schema
 title: Create Schema in Databricks Unity Catalog
-tier: 2
 platforms:
 - Databricks
 - AWS

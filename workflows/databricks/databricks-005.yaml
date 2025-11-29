@@ -1,7 +1,6 @@
 id: databricks-005
 source_url: https://docs.databricks.com/aws/en/clusters/create-cluster
 title: Create an All-Purpose Compute Resource in Databricks
-tier: 3
 platforms:
 - Databricks
 - AWS

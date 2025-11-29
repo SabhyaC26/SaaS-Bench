@@ -1,7 +1,6 @@
 id: databricks-002
 source_url: https://docs.databricks.com/aws/en/getting-started/quick-start
 title: Databricks Quick Start Workflow
-tier: 1
 platforms:
 - Databricks
 - AWS
