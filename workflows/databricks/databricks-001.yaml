@@ -9,16 +9,86 @@ description: A workflow to create a table in Databricks using Unity Catalog and 
 prerequisites:
 - A Databricks workspace enabled for Unity Catalog automatically
 - Permissions to attach to a compute resource
+
 initial_state:
-  workspace: Exists with Unity Catalog enabled
-  compute_resource: Available but not attached
-  notebook: Not created
-  table: Not created
+  catalogs:
+    workspace_catalog:
+      name: workspace_catalog
+      owner: admin
+      type: standard
+      comment: Default workspace catalog
+  schemas:
+    workspace_catalog.default:
+      catalog_name: workspace_catalog
+      schema_name: default
+      owner: admin
+  tables: {}
+  notebooks: {}
+  clusters:
+    cluster-001:
+      cluster_id: cluster-001
+      name: default-cluster
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions: []
+  active_catalog: null
+
 goal_state:
-  workspace: Configured with Unity Catalog
-  compute_resource: Attached to notebook
-  notebook: Created and configured with SQL commands
-  table: Created in workspace catalog under default schema with sample data inserted
+  catalogs:
+    workspace_catalog:
+      name: workspace_catalog
+      owner: admin
+      type: standard
+      comment: Default workspace catalog
+  schemas:
+    workspace_catalog.default:
+      catalog_name: workspace_catalog
+      schema_name: default
+      owner: admin
+  tables:
+    workspace_catalog.default.department:
+      catalog_name: workspace_catalog
+      schema_name: default
+      table_name: department
+      columns:
+      - name: deptcode
+        type: INT
+        nullable: true
+      - name: deptname
+        type: STRING
+        nullable: true
+      - name: location
+        type: STRING
+        nullable: true
+      data:
+      - deptcode: 10
+        deptname: FINANCE
+        location: EDINBURGH
+      - deptcode: 20
+        deptname: SOFTWARE
+        location: PADDINGTON
+      owner: admin
+  notebooks:
+    /Workspace/CreateTableNotebook:
+      path: /Workspace/CreateTableNotebook
+      language: sql
+      cells: []
+      attached_cluster_id: cluster-001
+  clusters:
+    cluster-001:
+      cluster_id: cluster-001
+      name: default-cluster
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions: []
+  active_catalog: workspace_catalog
+
 steps:
 - step_id: 1
   description: Create a new SQL notebook in Databricks workspace
@@ -27,13 +97,19 @@ steps:
   api_call:
     tool: create_notebook
     parameters:
-      language: SQL
-      name: CreateTableNotebook
+      path: /Workspace/CreateTableNotebook
+      language: sql
   expected_state_change:
-    notebook: Created in workspace
+    notebooks:
+      /Workspace/CreateTableNotebook:
+        path: /Workspace/CreateTableNotebook
+        language: sql
+        cells: []
+        attached_cluster_id: null
   verification:
     method: Check sidebar for new notebook entry
     expected_output: Notebook visible in workspace sidebar
+
 - step_id: 2
   description: Attach notebook to a compute resource
   method: ui
@@ -41,26 +117,30 @@ steps:
   api_call:
     tool: attach_to_cluster
     parameters:
-      notebook_id: CreateTableNotebook
-      cluster_id: <compute-resource-id>
+      notebook_path: /Workspace/CreateTableNotebook
+      cluster_id: cluster-001
   expected_state_change:
-    compute_resource: Attached to notebook
+    notebooks:
+      /Workspace/CreateTableNotebook:
+        attached_cluster_id: cluster-001
   verification:
     method: Check notebook status
     expected_output: Notebook shows connected status to cluster
+
 - step_id: 3
   description: Set the active catalog to workspace catalog
   method: sql
-  sql_command: USE CATALOG <workspace-catalog>
+  sql_command: USE CATALOG workspace_catalog
   api_call:
     tool: use_catalog
     parameters:
-      catalog_name: <workspace-catalog>
+      catalog_name: workspace_catalog
   expected_state_change:
-    active_catalog: Set to workspace catalog
+    active_catalog: workspace_catalog
   verification:
     method: Run command and check output
     expected_output: Catalog set successfully
+
 - step_id: 4
   description: Create a new table in the default schema
   method: sql
@@ -69,9 +149,9 @@ steps:
   api_call:
     tool: create_table
     parameters:
-      catalog: <workspace-catalog>
-      schema: default
-      table: department
+      catalog_name: workspace_catalog
+      schema_name: default
+      table_name: department
       columns:
       - name: deptcode
         type: INT
@@ -80,10 +160,24 @@ steps:
       - name: location
         type: STRING
   expected_state_change:
-    table: Created in default schema of workspace catalog
+    tables:
+      workspace_catalog.default.department:
+        catalog_name: workspace_catalog
+        schema_name: default
+        table_name: department
+        columns:
+        - name: deptcode
+          type: INT
+        - name: deptname
+          type: STRING
+        - name: location
+          type: STRING
+        data: []
+        owner: admin
   verification:
     method: Check Catalog sidebar for table existence
     expected_output: Table 'department' visible under default schema
+
 - step_id: 5
   description: Insert sample data into the department table
   method: sql
@@ -92,18 +186,22 @@ steps:
   api_call:
     tool: insert_into_table
     parameters:
-      catalog: <workspace-catalog>
-      schema: default
-      table: department
-      values:
-      - deptcode: 10
-        deptname: FINANCE
-        location: EDINBURGH
-      - deptcode: 20
-        deptname: SOFTWARE
-        location: PADDINGTON
+      catalog_name: workspace_catalog
+      schema_name: default
+      table_name: department
+      rows:
+      - [10, "FINANCE", "EDINBURGH"]
+      - [20, "SOFTWARE", "PADDINGTON"]
   expected_state_change:
-    table_data: Sample data inserted into department table
+    tables:
+      workspace_catalog.default.department:
+        data:
+        - deptcode: 10
+          deptname: FINANCE
+          location: EDINBURGH
+        - deptcode: 20
+          deptname: SOFTWARE
+          location: PADDINGTON
   verification:
     method: Run SELECT query on table
     expected_output: Returns 2 rows with inserted data

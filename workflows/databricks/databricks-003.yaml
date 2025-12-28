@@ -13,27 +13,73 @@ prerequisites:
 - Compute resource must be on Databricks Runtime 11.3 or above with Unity Catalog-compliant
   access mode.
 - SQL warehouses must support Unity Catalog.
-- 'For shared catalog: Delta Sharing share must exist in the workspace.'
-- 'For shared catalog: User must be a metastore admin, have USE PROVIDER privilege,
-  or own the provider object.'
-- 'For standard catalog with managed storage: User must have CREATE MANAGED STORAGE
-  privilege on the target external location.'
-- 'For standard catalog: If no metastore-level managed storage exists, a managed storage
-  location must be specified.'
-- 'For foreign catalog: User must be the owner of the connection or have CREATE FOREIGN
-  CATALOG privilege on the connection.'
-- 'For foreign catalog: Compute must be on Databricks Runtime 13.1 or above, and SQL
-  warehouses must be Pro or Serverless.'
+
 initial_state:
-  workspace: Databricks workspace initialized
-  user_privileges: User has necessary privileges or admin access
-  compute: No compute resource attached or configured for catalog creation
-  catalog: No catalog created
+  catalogs:
+    hive_metastore:
+      name: hive_metastore
+      owner: system
+      type: standard
+      comment: Legacy Hive metastore catalog
+  schemas:
+    hive_metastore.default:
+      catalog_name: hive_metastore
+      schema_name: default
+      owner: system
+  tables: {}
+  notebooks: {}
+  clusters:
+    unity-catalog-cluster:
+      cluster_id: unity-catalog-cluster
+      name: unity-catalog-cluster
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions: []
+  active_catalog: null
+
 goal_state:
-  workspace: Databricks workspace with a new catalog
-  user_privileges: User privileges unchanged
-  compute: Compute resource configured and attached for catalog creation
-  catalog: New catalog (standard, shared, or foreign) created in Unity Catalog
+  catalogs:
+    hive_metastore:
+      name: hive_metastore
+      owner: system
+      type: standard
+      comment: Legacy Hive metastore catalog
+    my_catalog:
+      name: my_catalog
+      owner: admin
+      type: standard
+      comment: null
+  schemas:
+    hive_metastore.default:
+      catalog_name: hive_metastore
+      schema_name: default
+      owner: system
+  tables: {}
+  notebooks:
+    /Workspace/create-catalog-notebook:
+      path: /Workspace/create-catalog-notebook
+      language: sql
+      cells: []
+      attached_cluster_id: unity-catalog-cluster
+  clusters:
+    unity-catalog-cluster:
+      cluster_id: unity-catalog-cluster
+      name: unity-catalog-cluster
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions:
+  - principal: user_or_group
+    privilege: USE CATALOG
+    securable_type: CATALOG
+    securable_name: my_catalog
+  active_catalog: hive_metastore
+
 steps:
 - step_id: 1
   description: Create a new notebook in Databricks workspace for catalog creation
@@ -42,13 +88,19 @@ steps:
   api_call:
     tool: create_notebook
     parameters:
-      notebook_name: create-catalog-notebook
-      language: SQL
+      path: /Workspace/create-catalog-notebook
+      language: sql
   expected_state_change:
-    notebook: New notebook created in workspace
+    notebooks:
+      /Workspace/create-catalog-notebook:
+        path: /Workspace/create-catalog-notebook
+        language: sql
+        cells: []
+        attached_cluster_id: null
   verification:
     method: ui
     check: Notebook appears in workspace UI under user folder
+
 - step_id: 2
   description: Attach the notebook to a compute cluster with appropriate runtime version
   method: ui
@@ -56,14 +108,16 @@ steps:
   api_call:
     tool: attach_to_cluster
     parameters:
-      notebook_id: create-catalog-notebook
+      notebook_path: /Workspace/create-catalog-notebook
       cluster_id: unity-catalog-cluster
-      runtime_version: 11.3 or above (13.1 for foreign catalog)
   expected_state_change:
-    compute: Notebook attached to cluster with Unity Catalog-compliant access mode
+    notebooks:
+      /Workspace/create-catalog-notebook:
+        attached_cluster_id: unity-catalog-cluster
   verification:
     method: ui
     check: Cluster status shows as attached to notebook in UI
+
 - step_id: 3
   description: Set the catalog context in the notebook for Unity Catalog operations
   method: sql
@@ -73,10 +127,11 @@ steps:
     parameters:
       catalog_name: hive_metastore
   expected_state_change:
-    context: Current catalog context set to hive_metastore
+    active_catalog: hive_metastore
   verification:
     method: sql
     check: Run 'SHOW CURRENT CATALOG' to confirm hive_metastore is active
+
 - step_id: 4
   description: Create a new catalog in Unity Catalog with specified type and properties
   method: sql
@@ -85,15 +140,17 @@ steps:
     tool: create_catalog
     parameters:
       catalog_name: my_catalog
-      type: standard|shared|foreign
-      properties:
-        managed_location: optional_s3_path
-        connection: optional_connection_name_for_foreign
+      type: standard
   expected_state_change:
-    catalog: New catalog 'my_catalog' created in Unity Catalog
+    catalogs:
+      my_catalog:
+        name: my_catalog
+        owner: admin
+        type: standard
   verification:
     method: sql
     check: Run 'SHOW CATALOGS' to confirm 'my_catalog' is listed
+
 - step_id: 5
   description: Grant necessary privileges on the new catalog to users or groups
   method: sql
@@ -102,10 +159,15 @@ steps:
     tool: grant_privilege
     parameters:
       privilege: USE CATALOG
-      catalog_name: my_catalog
+      securable_type: CATALOG
+      securable_name: my_catalog
       principal: user_or_group
   expected_state_change:
-    permissions: Specified user or group granted USE CATALOG privilege on 'my_catalog'
+    permissions:
+    - principal: user_or_group
+      privilege: USE CATALOG
+      securable_type: CATALOG
+      securable_name: my_catalog
   verification:
     method: sql
     check: Run 'SHOW GRANTS ON CATALOG my_catalog' to confirm privileges
