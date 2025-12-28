@@ -5,188 +5,100 @@ platforms:
 - Databricks
 - AWS
 description: This workflow guides users through the process of creating a new all-purpose
-  compute resource in Databricks on AWS, including configuration of performance settings,
-  policies, and advanced options.
+  compute resource in Databricks on AWS, including configuration of performance settings
+  and basic options.
 prerequisites:
 - Access to a Databricks workspace with appropriate permissions
 - AWS account with sufficient privileges to create compute resources
 - Workspace admin access if additional policies or configurations are needed
-- 'Optional: Instance profiles configured for S3 access if required'
-- 'Optional: Capacity Blocks purchased in AWS for reserved capacity if needed'
+
 initial_state:
-  workspace_access: true
-  compute_resources: No all-purpose compute resource created
-  cluster_status: Not started
+  catalogs:
+    workspace_catalog:
+      name: workspace_catalog
+      owner: admin
+      type: standard
+      comment: Default workspace catalog
+  schemas:
+    workspace_catalog.default:
+      catalog_name: workspace_catalog
+      schema_name: default
+      owner: admin
+  tables: {}
+  notebooks: {}
+  clusters: {}
+  jobs: {}
+  permissions: []
+  active_catalog: null
+
 goal_state:
-  workspace_access: true
-  compute_resources: All-purpose compute resource created and running
-  cluster_status: Active and ready for use
+  catalogs:
+    workspace_catalog:
+      name: workspace_catalog
+      owner: admin
+      type: standard
+      comment: Default workspace catalog
+  schemas:
+    workspace_catalog.default:
+      catalog_name: workspace_catalog
+      schema_name: default
+      owner: admin
+  tables: {}
+  notebooks: {}
+  clusters:
+    all-purpose-cluster:
+      cluster_id: all-purpose-cluster
+      name: all-purpose-compute
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions: []
+  active_catalog: null
+
 steps:
 - step_id: 1
   description: Navigate to Compute section in Databricks workspace
   method: ui
   sql_command: null
   api_call:
-    tool: navigate_to_compute
-    parameters:
-      section: Compute
-  expected_state_change:
-    ui_location: Compute section
+    tool: list_clusters
+    parameters: {}
+  expected_state_change: {}
   verification:
     check: Verify Compute tab is visible in workspace sidebar
+
 - step_id: 2
-  description: Initiate creation of a new compute resource
+  description: Create a new all-purpose compute cluster with default configuration
   method: ui
   sql_command: null
   api_call:
-    tool: create_compute_init
+    tool: create_cluster
     parameters:
-      button: Create compute
+      name: all-purpose-compute
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
   expected_state_change:
-    ui_state: Compute creation form opened
+    clusters:
+      all-purpose-cluster:
+        cluster_id: all-purpose-cluster
+        name: all-purpose-compute
+        state: RUNNING
+        node_type: i3.xlarge
+        num_workers: 2
+        spark_version: "13.3.x-scala2.12"
   verification:
-    check: Verify compute creation form is displayed
+    check: Verify compute resource appears in Compute list with status 'Running'
+
 - step_id: 3
-  description: Select a compute policy
+  description: Verify compute resource is ready and running
   method: ui
   sql_command: null
   api_call:
-    tool: select_compute_policy
-    parameters:
-      policy: Personal Compute or as assigned by admin
-  expected_state_change:
-    policy_selected: Policy applied to compute configuration
-  verification:
-    check: Verify selected policy appears in dropdown
-- step_id: 4
-  description: Configure Databricks Runtime version
-  method: ui
-  sql_command: null
-  api_call:
-    tool: configure_runtime
-    parameters:
-      runtime_version: Latest or LTS based on workload
-  expected_state_change:
-    runtime_configured: Runtime version set
-  verification:
-    check: Verify runtime version is selected in dropdown
-- step_id: 5
-  description: Enable or disable Photon acceleration
-  method: ui
-  sql_command: null
-  api_call:
-    tool: configure_photon
-    parameters:
-      photon_enabled: true
-  expected_state_change:
-    photon_status: Enabled if checked
-  verification:
-    check: Verify Photon acceleration checkbox status
-- step_id: 6
-  description: Select worker node type
-  method: ui
-  sql_command: null
-  api_call:
-    tool: select_worker_type
-    parameters:
-      worker_type: Based on workload (e.g., memory-intensive, GPU)
-  expected_state_change:
-    worker_type_selected: Worker node type configured
-  verification:
-    check: Verify worker type is selected in dropdown
-- step_id: 7
-  description: Configure single-node or multi-node compute
-  method: ui
-  sql_command: null
-  api_call:
-    tool: configure_node_type
-    parameters:
-      node_type: Single-node for small workloads, multi-node for distributed
-  expected_state_change:
-    node_configuration: Single or multi-node set
-  verification:
-    check: Verify single-node checkbox status or multi-node settings
-- step_id: 8
-  description: Enable autoscaling if needed
-  method: ui
-  sql_command: null
-  api_call:
-    tool: configure_autoscaling
-    parameters:
-      autoscaling_enabled: false
-      min_workers: 1
-      max_workers: 10
-  expected_state_change:
-    autoscaling_status: Configured if enabled
-  verification:
-    check: Verify autoscaling checkbox and min/max worker fields
-- step_id: 9
-  description: Configure advanced performance settings (spot instances, termination,
-    driver type)
-  method: ui
-  sql_command: null
-  api_call:
-    tool: configure_advanced_performance
-    parameters:
-      spot_instances: false
-      auto_termination_minutes: 120
-      driver_type: Same as worker or larger for heavy notebook usage
-  expected_state_change:
-    advanced_settings: Configured
-  verification:
-    check: Verify spot instance checkbox, termination time, and driver type selection
-- step_id: 10
-  description: Add tags for cost monitoring
-  method: ui
-  sql_command: null
-  api_call:
-    tool: add_tags
-    parameters:
-      tags:
-      - key: department
-        value: data-science
-  expected_state_change:
-    tags_applied: Tags added to compute configuration
-  verification:
-    check: Verify tags appear in the Tags section
-- step_id: 11
-  description: Configure advanced settings (access mode, instance profiles, etc.)
-  method: ui
-  sql_command: null
-  api_call:
-    tool: configure_advanced_settings
-    parameters:
-      access_mode: Auto (Standard or Dedicated)
-      instance_profile: Optional for S3 access
-      availability_zone: Auto or specific if using Capacity Blocks
-      autoscaling_local_storage: false
-  expected_state_change:
-    advanced_config: Advanced settings applied
-  verification:
-    check: Verify advanced settings under respective tabs
-- step_id: 12
-  description: Finalize and create the compute resource
-  method: ui
-  sql_command: null
-  api_call:
-    tool: create_compute_finalize
-    parameters:
-      action: Create
-  expected_state_change:
-    cluster_status: Starting
-    compute_resources: New compute resource in progress
-  verification:
-    check: Verify compute resource appears in Compute list with status 'Starting'
-- step_id: 13
-  description: Wait for compute resource to be ready
-  method: ui
-  sql_command: null
-  api_call:
-    tool: check_compute_status
-    parameters:
-      expected_status: Running
-  expected_state_change:
-    cluster_status: Active and ready for use
-    compute_resources: All-purpose compute resource created and running
+    tool: list_clusters
+    parameters: {}
+  expected_state_change: {}
   verification:
     check: Verify compute status is 'Running' in Compute list

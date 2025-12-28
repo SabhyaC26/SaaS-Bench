@@ -9,18 +9,140 @@ description: A beginner-friendly workflow to create a notebook, query a sample t
 prerequisites:
 - Workspace must have Unity Catalog enabled
 - Permission to use an existing compute resource or create a new compute resource
+
 initial_state:
-  workspace: Unity Catalog enabled workspace exists
-  compute_resource: Permission to access or create compute resources
-  notebook: No notebook created
-  data_query: No query executed
-  visualization: No visualization created
+  catalogs:
+    samples:
+      name: samples
+      owner: system
+      type: standard
+      comment: Sample datasets provided by Databricks
+  schemas:
+    samples.nyctaxi:
+      catalog_name: samples
+      schema_name: nyctaxi
+      owner: system
+  tables:
+    samples.nyctaxi.trips:
+      catalog_name: samples
+      schema_name: nyctaxi
+      table_name: trips
+      columns:
+      - name: trip_id
+        type: STRING
+        nullable: false
+      - name: fare_amount
+        type: DOUBLE
+        nullable: true
+      - name: trip_distance
+        type: DOUBLE
+        nullable: true
+      - name: pickup_zip
+        type: STRING
+        nullable: true
+      - name: dropoff_zip
+        type: STRING
+        nullable: true
+      data:
+      - trip_id: "trip-001"
+        fare_amount: 15.50
+        trip_distance: 3.2
+        pickup_zip: "10001"
+        dropoff_zip: "10002"
+      - trip_id: "trip-002"
+        fare_amount: 22.75
+        trip_distance: 5.8
+        pickup_zip: "10003"
+        dropoff_zip: "10004"
+      - trip_id: "trip-003"
+        fare_amount: 8.00
+        trip_distance: 1.5
+        pickup_zip: "10001"
+        dropoff_zip: "10005"
+      owner: system
+  notebooks: {}
+  clusters:
+    cluster-001:
+      cluster_id: cluster-001
+      name: quick-start-cluster
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions: []
+  active_catalog: null
+
 goal_state:
-  workspace: Unity Catalog enabled workspace active
-  compute_resource: Compute resource accessible
-  notebook: New notebook created and attached to cluster
-  data_query: Sample table queried successfully
-  visualization: Bar chart visualization created for fare amount by trip distance
+  catalogs:
+    samples:
+      name: samples
+      owner: system
+      type: standard
+      comment: Sample datasets provided by Databricks
+  schemas:
+    samples.nyctaxi:
+      catalog_name: samples
+      schema_name: nyctaxi
+      owner: system
+  tables:
+    samples.nyctaxi.trips:
+      catalog_name: samples
+      schema_name: nyctaxi
+      table_name: trips
+      columns:
+      - name: trip_id
+        type: STRING
+        nullable: false
+      - name: fare_amount
+        type: DOUBLE
+        nullable: true
+      - name: trip_distance
+        type: DOUBLE
+        nullable: true
+      - name: pickup_zip
+        type: STRING
+        nullable: true
+      - name: dropoff_zip
+        type: STRING
+        nullable: true
+      data:
+      - trip_id: "trip-001"
+        fare_amount: 15.50
+        trip_distance: 3.2
+        pickup_zip: "10001"
+        dropoff_zip: "10002"
+      - trip_id: "trip-002"
+        fare_amount: 22.75
+        trip_distance: 5.8
+        pickup_zip: "10003"
+        dropoff_zip: "10004"
+      - trip_id: "trip-003"
+        fare_amount: 8.00
+        trip_distance: 1.5
+        pickup_zip: "10001"
+        dropoff_zip: "10005"
+      owner: system
+  notebooks:
+    /Workspace/Users/user/QuickStartNotebook:
+      path: /Workspace/Users/user/QuickStartNotebook
+      language: python
+      cells:
+      - "SELECT * FROM samples.nyctaxi.trips"
+      - "VISUALIZATION: type=Bar, x=fare_amount, y=trip_distance, group_by=pickup_zip"
+      attached_cluster_id: cluster-001
+  clusters:
+    cluster-001:
+      cluster_id: cluster-001
+      name: quick-start-cluster
+      state: RUNNING
+      node_type: i3.xlarge
+      num_workers: 2
+      spark_version: "13.3.x-scala2.12"
+  jobs: {}
+  permissions: []
+  active_catalog: samples
+
 steps:
 - step_id: 1
   description: Create a new notebook in the Databricks workspace
@@ -29,13 +151,19 @@ steps:
   api_call:
     tool: create_notebook
     parameters:
-      name: QuickStartNotebook
-      path: /Workspace/Users/<user>/QuickStartNotebook
+      path: /Workspace/Users/user/QuickStartNotebook
+      language: python
   expected_state_change:
-    notebook: New notebook created in workspace
+    notebooks:
+      /Workspace/Users/user/QuickStartNotebook:
+        path: /Workspace/Users/user/QuickStartNotebook
+        language: python
+        cells: []
+        attached_cluster_id: null
   verification:
     check: Notebook appears in workspace sidebar
     method: UI confirmation
+
 - step_id: 2
   description: Attach the notebook to a compute cluster
   method: ui
@@ -43,27 +171,34 @@ steps:
   api_call:
     tool: attach_to_cluster
     parameters:
-      notebook_id: <notebook_id>
-      cluster_id: <existing_cluster_id>
+      notebook_path: /Workspace/Users/user/QuickStartNotebook
+      cluster_id: cluster-001
   expected_state_change:
-    compute_resource: Notebook attached to cluster
+    notebooks:
+      /Workspace/Users/user/QuickStartNotebook:
+        attached_cluster_id: cluster-001
   verification:
     check: Cluster status shows as attached in notebook UI
     method: UI confirmation
+
 - step_id: 3
   description: Query the samples.nyctaxi.trips table
   method: sql
   sql_command: SELECT * FROM samples.nyctaxi.trips
   api_call:
-    tool: query_table
+    tool: run_notebook_cell
     parameters:
-      table: samples.nyctaxi.trips
-      query: SELECT * FROM samples.nyctaxi.trips
+      notebook_path: /Workspace/Users/user/QuickStartNotebook
+      cell_content: "SELECT * FROM samples.nyctaxi.trips"
   expected_state_change:
-    data_query: Query results displayed in notebook
+    notebooks:
+      /Workspace/Users/user/QuickStartNotebook:
+        cells:
+        - "SELECT * FROM samples.nyctaxi.trips"
   verification:
     check: Query results appear in notebook cell output
     method: UI confirmation
+
 - step_id: 4
   description: Create a visualization of fare amount by trip distance grouped by pickup
     zip
@@ -72,14 +207,17 @@ steps:
   api_call:
     tool: create_visualization
     parameters:
-      type: Bar
+      notebook_path: /Workspace/Users/user/QuickStartNotebook
+      visualization_type: Bar
       x_column: fare_amount
       y_column: trip_distance
-      aggregation: Average
       group_by: pickup_zip
-      notebook_id: <notebook_id>
   expected_state_change:
-    visualization: Bar chart created and saved in notebook
+    notebooks:
+      /Workspace/Users/user/QuickStartNotebook:
+        cells:
+        - "SELECT * FROM samples.nyctaxi.trips"
+        - "VISUALIZATION: type=Bar, x=fare_amount, y=trip_distance, group_by=pickup_zip"
   verification:
     check: Visualization appears in notebook under visualization tab
     method: UI confirmation
